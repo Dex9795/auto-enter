@@ -41,6 +41,7 @@ function process() {
     if (dMatch) result += "D. " + dMatch[1].trim() + "\n";
     if (answerMatch) result += "\n→ Đáp án đúng: " + answerMatch[1].toUpperCase();
 
+    result += "\n\n" + "-".repeat(40) + "\n\n"; // ngăn cách các câu
   });
 
   document.getElementById('output').innerText = result || "❌ Không thể tách được. Vui lòng kiểm tra định dạng!";
