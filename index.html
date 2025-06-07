@@ -1,52 +1,108 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Tách nhiều câu hỏi trắc nghiệm</title>
+  <meta charset="UTF-8" />
+  <title>Trình tách câu hỏi trắc nghiệm</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    body { font-family: Arial; margin: 20px; }
     textarea { width: 100%; height: 200px; margin-bottom: 10px; }
-    button { padding: 10px 20px; font-size: 16px; }
-    .output { white-space: pre-wrap; background: #f9f9f9; border: 1px solid #ccc; padding: 15px; border-radius: 8px; margin-top: 20px; }
+    .output { white-space: pre-wrap; background: #f0f0f0; padding: 10px; border-radius: 5px; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    .correct { font-weight: bold; }
   </style>
 </head>
 <body>
 
-<h2>🔍 Dán nhiều câu hỏi trắc nghiệm dính liền vào đây (mỗi câu trên 1 dòng):</h2>
-<textarea id="input"></textarea>
-<br>
-<button onclick="process()">Tách câu hỏi</button>
+  <h2>Nhập câu hỏi trắc nghiệm dính liền (có thể nhiều câu):</h2>
+  <textarea id="input"></textarea>
+  <button onclick="process()">Tách câu hỏi</button>
 
-<h2>📄 Kết quả:</h2>
-<div class="output" id="output"></div>
+  <h2>Kết quả đã tách:</h2>
+  <div class="output" id="output"></div>
 
-<script>
-function process() {
-  const inputText = document.getElementById('input').value.trim();
-  const lines = inputText.split(/\n+/);
-  let result = "";
+  <script>
+    function process() {
+      const input = document.getElementById('input').value.trim();
 
-  lines.forEach((line, index) => {
-    const questionMatch = line.match(/(Câu\s*\d+\..*?)(?=A\.)/i);
-    const aMatch = line.match(/A\.(.*?)(?=B\.)/i);
-    const bMatch = line.match(/B\.(.*?)(?=C\.)/i);
-    const cMatch = line.match(/C\.(.*?)(?=D\.)/i);
-    const dMatch = line.match(/D\.(.*?)(?=→|$)/i);
-    const answerMatch = line.match(/→\s*Đáp án đúng\s*:\s*([A-D])/i);
+      // 1. Tách từng câu hỏi theo định dạng "Câu số."
+      // Bỏ số cũ, đánh lại từ 1
+      // Mỗi câu bắt đầu bằng "Câu" rồi số, lấy đến trước "Câu" tiếp theo hoặc hết chuỗi
+      const questionBlocks = input.split(/(?=Câu\s*\d+\.)/gi).filter(q => q.trim() !== "");
 
-    if (questionMatch) result += questionMatch[1].trim() + "\n\n";
-    if (aMatch) result += "A. " + aMatch[1].trim() + "\n";
-    if (bMatch) result += "B. " + bMatch[1].trim() + "\n";
-    if (cMatch) result += "C. " + cMatch[1].trim() + "\n";
-    if (dMatch) result += "D. " + dMatch[1].trim() + "\n";
-    if (answerMatch) result += "\n→ Đáp án đúng: " + answerMatch[1].toUpperCase();
+      let output = "";
+      let questionCount = 1;
 
-    result += "\n\n" + "-".repeat(40) + "\n\n"; // ngăn cách các câu
-  });
+      questionBlocks.forEach(block => {
+        // Xóa số câu cũ (ví dụ "Câu 10." -> "Câu ")
+        let blockNoNumber = block.replace(/Câu\s*\d+\./i, "Câu ");
 
-  document.getElementById('output').innerText = result || "❌ Không thể tách được. Vui lòng kiểm tra định dạng!";
-}
-</script>
+        // Tách phần câu hỏi, các lựa chọn, đáp án, giải thích
+        // Định dạng chung dự kiến:
+        // Câu ... <nội dung câu hỏi> A. ... B. ... C. ... D. ... → Đáp án đúng : X [giải thích có thể có hoặc không]
+
+        // Tách câu hỏi (đến trước A.)
+        const questionMatch = blockNoNumber.match(/(Câu\s*)(.*?)(?=A\.)/is);
+        const questionText = questionMatch ? questionMatch[2].trim() : "";
+
+        // Tách từng lựa chọn
+        // Vì có thể các lựa chọn dính liền, dùng regex non-greedy với lookahead
+        const aMatch = blockNoNumber.match(/A\.(.*?)(?=B\.)/is);
+        const bMatch = blockNoNumber.match(/B\.(.*?)(?=C\.)/is);
+        const cMatch = blockNoNumber.match(/C\.(.*?)(?=D\.)/is);
+        const dMatch = blockNoNumber.match(/D\.(.*?)(?=(→|$))/is);
+
+        // Tách đáp án đúng (chỉ lấy chữ A-D)
+        const answerMatch = blockNoNumber.match(/→\s*Đáp án đúng\s*:\s*([A-D])/i);
+
+        // Tách phần giải thích (nếu có), giả sử giải thích nằm sau đáp án đúng (→ ... )
+        // Ví dụ: "→ Đáp án đúng: B. Giải thích..."
+        let explanation = "";
+        const explanationMatch = blockNoNumber.match(/→\s*Đáp án đúng\s*:\s*[A-D]\s*(.*)/is);
+        if (explanationMatch && explanationMatch[1]) {
+          explanation = explanationMatch[1].trim();
+        }
+
+        // Đánh số câu lại
+        output += `Câu ${questionCount}.\n${questionText}\n\n`;
+
+        // Helper function để render lựa chọn, in đậm nếu là đáp án đúng
+        function renderChoice(label, match) {
+          if (!match) return "";
+          let text = match[1].trim();
+
+          // Nếu lựa chọn đúng thì in đậm
+          if (answerMatch && answerMatch[1].toUpperCase() === label) {
+            return `${label}. **${text}**\n`;
+          } else {
+            return `${label}. ${text}\n`;
+          }
+        }
+
+        output += renderChoice("A", aMatch);
+        output += renderChoice("B", bMatch);
+        output += renderChoice("C", cMatch);
+        output += renderChoice("D", dMatch);
+
+        // Giữ nguyên phần giải thích nếu có (không in dòng đáp án đúng)
+        if (explanation) {
+          output += `\nGiải thích: ${explanation}\n`;
+        }
+
+        output += "\n"; // cách dòng giữa các câu
+        questionCount++;
+      });
+
+      // Hiển thị với in đậm phần đáp án đúng
+      // Vì output là text, ta sẽ chuyển dấu **...** thành phần tử in đậm HTML
+
+      // Chuyển đổi **text** thành <span class="correct">text</span>
+      const htmlOutput = output
+        .replace(/\*\*(.*?)\*\*/g, (_, txt) => `<span class="correct">${txt}</span>`)
+        .replace(/\n/g, "<br>");
+
+      document.getElementById('output').innerHTML = htmlOutput || "Không thể tách được. Kiểm tra lại định dạng!";
+    }
+  </script>
 
 </body>
 </html>
