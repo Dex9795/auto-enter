@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Tách nhiều câu hỏi trắc nghiệm</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    textarea { width: 100%; height: 200px; margin-bottom: 10px; }
+    button { padding: 10px 20px; font-size: 16px; }
+    .output { white-space: pre-wrap; background: #f9f9f9; border: 1px solid #ccc; padding: 15px; border-radius: 8px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+
+<h2>🔍 Dán nhiều câu hỏi trắc nghiệm dính liền vào đây (mỗi câu trên 1 dòng):</h2>
+<textarea id="input"></textarea>
+<br>
+<button onclick="process()">Tách câu hỏi</button>
+
+<h2>📄 Kết quả:</h2>
+<div class="output" id="output"></div>
+
+<script>
+function process() {
+  const inputText = document.getElementById('input').value.trim();
+  const lines = inputText.split(/\n+/);
+  let result = "";
+
+  lines.forEach((line, index) => {
+    const questionMatch = line.match(/(Câu\s*\d+\..*?)(?=A\.)/i);
+    const aMatch = line.match(/A\.(.*?)(?=B\.)/i);
+    const bMatch = line.match(/B\.(.*?)(?=C\.)/i);
+    const cMatch = line.match(/C\.(.*?)(?=D\.)/i);
+    const dMatch = line.match(/D\.(.*?)(?=→|$)/i);
+    const answerMatch = line.match(/→\s*Đáp án đúng\s*:\s*([A-D])/i);
+
+    if (questionMatch) result += questionMatch[1].trim() + "\n\n";
+    if (aMatch) result += "A. " + aMatch[1].trim() + "\n";
+    if (bMatch) result += "B. " + bMatch[1].trim() + "\n";
+    if (cMatch) result += "C. " + cMatch[1].trim() + "\n";
+    if (dMatch) result += "D. " + dMatch[1].trim() + "\n";
+    if (answerMatch) result += "\n→ Đáp án đúng: " + answerMatch[1].toUpperCase();
+
+  });
+
+  document.getElementById('output').innerText = result || "❌ Không thể tách được. Vui lòng kiểm tra định dạng!";
+}
+</script>
+
+</body>
+</html>
