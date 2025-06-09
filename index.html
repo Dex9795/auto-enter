@@ -1,71 +1,93 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Tách nhiều câu hỏi trắc nghiệm</title>
+  <meta charset="UTF-8" />
+  <title>Trình tách câu hỏi trắc nghiệm</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 20px; max-width: 900px; margin: auto; }
+    body { font-family: Arial; margin: 20px; }
     textarea { width: 100%; height: 200px; margin-bottom: 10px; }
-    button { padding: 10px 20px; font-size: 16px; }
-    .output { white-space: pre-wrap; background: #f9f9f9; border: 1px solid #ccc; padding: 15px; border-radius: 8px; margin-top: 20px; }
+    .output { white-space: pre-wrap; background: #f0f0f0; padding: 10px; border-radius: 5px; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    .correct-line { font-weight: bold; }
   </style>
 </head>
 <body>
 
-<h2>🔍 Dán nhiều câu hỏi trắc nghiệm (mỗi câu trên 1 dòng):</h2>
-<textarea id="input"></textarea>
-<br>
-<button onclick="process()">Tách câu hỏi</button>
+  <h2>Nhập câu hỏi trắc nghiệm dính liền (có thể nhiều câu):</h2>
+  <textarea id="input"></textarea>
+  <button onclick="process()">Tách câu hỏi</button>
 
-<h2>📄 Kết quả:</h2>
-<div class="output" id="output"></div>
+  <h2>Kết quả đã tách:</h2>
+  <div class="output" id="output"></div>
 
-<script>
-function process() {
-  const inputText = document.getElementById('input').value.trim();
-  const lines = inputText.split(/\n+/);
-  let result = "";
-  let count = 1;
+  <script>
+    function process() {
+      const input = document.getElementById('input').value.trim();
+      const questionBlocks = input.split(/(?=Câu\s*\d+\.)/gi).filter(q => q.trim() !== "");
+      let output = "";
+      let questionCount = 1;
 
-  lines.forEach((line) => {
-    const questionMatch = line.match(/Câu\s*\d+\.\s*(.*?)(?=A\.)/i);
-    const aMatch = line.match(/A\.(.*?)(?=B\.)/i);
-    const bMatch = line.match(/B\.(.*?)(?=C\.)/i);
-    const cMatch = line.match(/C\.(.*?)(?=D\.)/i);
-    const dMatch = line.match(/D\.(.*?)(?=→|$)/i);
-    const answerMatch = line.match(/→\s*Đáp án đúng\s*:\s*([A-D])/i);
+      questionBlocks.forEach(block => {
+        let blockNoNumber = block.replace(/Câu\s*\d+\./i, "Câu ");
+        const questionMatch = blockNoNumber.match(/(Câu\s*)(.*?)(?=A\.)/is);
+        const questionText = questionMatch ? questionMatch[2].trim() : "";
 
-    const questionText = questionMatch ? questionMatch[1].trim() : null;
-    const aText = aMatch ? aMatch[1].trim() : "";
-    const bText = bMatch ? bMatch[1].trim() : "";
-    const cText = cMatch ? cMatch[1].trim() : "";
-    const dText = dMatch ? dMatch[1].trim() : "";
-    const answerLetter = answerMatch ? answerMatch[1].toUpperCase() : null;
+        const aMatch = blockNoNumber.match(/A\.(.*?)(?=B\.)/is);
+        const bMatch = blockNoNumber.match(/B\.(.*?)(?=C\.)/is);
+        const cMatch = blockNoNumber.match(/C\.(.*?)(?=D\.)/is);
+        const dMatch = blockNoNumber.match(/D\.(.*?)(?=(→|$))/is);
 
-    if (!questionText || !answerLetter) return;
+        const answerMatch = blockNoNumber.match(/→\s*Đáp án đúng\s*:\s*([A-D])/i);
+        const correctLetter = answerMatch ? answerMatch[1].toUpperCase() : "";
+        let correctText = "";
 
-    result += `Câu ${count++}. ${questionText}\n\n`;
-    result += `A. ${aText}\n`;
-    result += `B. ${bText}\n`;
-    result += `C. ${cText}\n`;
-    result += `D. ${dText}\n\n`;
+        // Lấy nội dung câu trả lời đúng để hiển thị phía dưới
+        switch (correctLetter) {
+          case "A": correctText = aMatch ? aMatch[1].trim() : ""; break;
+          case "B": correctText = bMatch ? bMatch[1].trim() : ""; break;
+          case "C": correctText = cMatch ? cMatch[1].trim() : ""; break;
+          case "D": correctText = dMatch ? dMatch[1].trim() : ""; break;
+        }
 
-    let correctAnswerText = "";
-    switch (answerLetter) {
-      case "A": correctAnswerText = aText; break;
-      case "B": correctAnswerText = bText; break;
-      case "C": correctAnswerText = cText; break;
-      case "D": correctAnswerText = dText; break;
+        let explanation = "";
+        const explanationMatch = blockNoNumber.match(/→\s*Đáp án đúng\s*:\s*[A-D]\s*(.*)/is);
+        if (explanationMatch && explanationMatch[1]) {
+          explanation = explanationMatch[1].trim();
+        }
+
+        output += `Câu ${questionCount}.\n${questionText}\n\n`;
+
+        function renderChoice(label, match) {
+          if (!match) return "";
+          const text = match[1].trim();
+          return `${label}. ${text}\n`;
+        }
+
+        output += renderChoice("A", aMatch);
+        output += renderChoice("B", bMatch);
+        output += renderChoice("C", cMatch);
+        output += renderChoice("D", dMatch);
+
+        if (correctLetter && correctText) {
+          output += `\nĐáp án đúng: ${correctLetter}. ${correctText}\n`;
+        }
+
+        if (explanation) {
+          output += `${explanation}\n`;
+        }
+
+        output += "\n";
+        questionCount++;
+      });
+
+      // Hiển thị HTML: chuyển đổi **...** thành dòng in đậm
+      const htmlOutput = output
+        .replace(/\*\*(.*?)\*\*/g, (_, txt) => `<div class="correct-line">${txt}</div>`)
+        .replace(/\n/g, "<br>");
+
+      document.getElementById('output').innerHTML = htmlOutput || "Không thể tách được. Kiểm tra lại định dạng!";
     }
-
-    result += `Đáp án đúng: ${answerLetter}. ${correctAnswerText}\n`;
-    result += `Giải thích: Đáp án đúng là ${answerLetter}. ${correctAnswerText}\n`;
-    result += "\n" + "-".repeat(40) + "\n\n";
-  });
-
-  document.getElementById('output').innerText = result || "❌ Không thể tách được. Vui lòng kiểm tra định dạng!";
-}
-</script>
+  </script>
 
 </body>
 </html>
